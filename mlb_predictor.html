@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLB Run & HR Predictor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #e94560;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #a8dadc;
+      font-size: 1rem;
+      margin-top: 0.3rem;
+      text-align: center;
+    }
+
+    .card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 1.4rem;
+      width: 100%;
+      max-width: 680px;
+      margin-top: 1.4rem;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .control-group input,
+    .control-group select {
+      background: #0f3460;
+      border: 1px solid #1a4a80;
+      color: #eee;
+      border-radius: 6px;
+      padding: 0.5rem 0.7rem;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    .control-group input:focus,
+    .control-group select:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+
+    .btn {
+      margin-top: 1rem;
+      padding: 0.6rem 1.6rem;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Results */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .result-section h3 {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 0.8rem;
+    }
+
+    .team-result {
+      margin-bottom: 0.7rem;
+    }
+
+    .team-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .team-name { color: #a8dadc; font-weight: 600; }
+    .team-value { color: #eee; font-weight: bold; font-size: 1rem; }
+
+    .bar-track {
+      background: #0f2040;
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #e94560, #c73652);
+      transition: width 0.5s ease;
+    }
+
+    .bar-fill.alt {
+      background: linear-gradient(90deg, #a8dadc, #78b2b5);
+    }
+
+    /* Loading */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #333;
+      border-top-color: #a8dadc;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status-msg {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.8rem;
+      min-height: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #status-msg.error { color: #e94560; }
+    #status-msg.warn { color: #f4a261; }
+    #status-msg.ok { color: #4caf50; }
+
+    /* Stats breakdown */
+    .breakdown-toggle {
+      background: none;
+      border: none;
+      color: #a8dadc;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    #breakdown {
+      display: none;
+      margin-top: 1rem;
+    }
+
+    #breakdown.open { display: block; }
+
+    .breakdown-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .breakdown-table th {
+      text-align: left;
+      color: #555;
+      font-size: 0.7rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 0.3rem 0.5rem;
+      border-bottom: 1px solid #1a2a4a;
+    }
+
+    .breakdown-table td {
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid #1a2a4a;
+      color: #ccc;
+    }
+
+    .breakdown-table td:last-child { color: #eee; font-weight: 600; }
+
+    .placeholder {
+      color: #555;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 1.5rem 0;
+    }
+
+    @media (max-width: 480px) {
+      .controls-grid, .results-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>MLB Run & HR Predictor</h1>
+  <div class="subtitle">Yankees vs Giants &nbsp;|&nbsp; March 25, 2026 &nbsp;&mdash;&nbsp; Opening Night</div>
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">Settings</div>
+    <div class="controls-grid">
+      <div class="control-group">
+        <label>Stadium</label>
+        <select id="park">
+          <option value="yankee">Yankee Stadium (NYY home)</option>
+          <option value="oracle">Oracle Park (SF home)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Historical Season</label>
+        <select id="season">
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>NYY Starting Pitcher</label>
+        <input id="pitcher-nyw" type="text" value="Max Fried" placeholder="e.g. Max Fried">
+      </div>
+      <div class="control-group">
+        <label>SF Starting Pitcher</label>
+        <input id="pitcher-sf" type="text" value="Logan Webb" placeholder="e.g. Logan Webb">
+      </div>
+    </div>
+    <button class="btn" id="calc-btn" onclick="calculate()">Recalculate</button>
+    <div id="status-msg"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="card" id="results-card">
+    <div class="card-title">Predictions</div>
+    <div id="results-body">
+      <div class="placeholder">Click Recalculate to generate predictions.</div>
+    </div>
+  </div>
+
+  <!-- Stats Breakdown -->
+  <div class="card" id="breakdown-card" style="display:none">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Stats Used</span>
+      <button class="breakdown-toggle" onclick="toggleBreakdown()">Show details</button>
+    </div>
+    <div id="breakdown"></div>
+  </div>
+
+  <script>
+    const MLB = 'https://statsapi.mlb.com/api/v1';
+
+    const PARKS = {
+      yankee: { name: 'Yankee Stadium', runFactor: 108, hrFactor: 122 },
+      oracle: { name: 'Oracle Park',    runFactor:  91, hrFactor:  71 }
+    };
+
+    // League average pitching stats (2024 MLB season)
+    const LG_ERA  = 4.15;
+    const LG_HR9  = 1.15;
+
+    // Fallback stats (2024 season actuals) used if API is unavailable
+    const FALLBACK = {
+      teams: {
+        147: { name: 'Yankees', runsPerGame: 5.08, hrPerGame: 1.46, avg: '.251' },
+        137: { name: 'Giants',  runsPerGame: 4.23, hrPerGame: 1.11, avg: '.244' }
+      },
+      pitchers: {
+        'Max Fried':   { era: 3.25, hr9: 0.87, ip: '165.0', gs: 26, name: 'Max Fried'   },
+        'Logan Webb':  { era: 3.18, hr9: 0.74, ip: '209.0', gs: 33, name: 'Logan Webb'  }
+      }
+    };
+
+    let lastData = null;
+
+    function setStatus(msg, type = '') {
+      const el = document.getElementById('status-msg');
+      el.className = type;
+      el.innerHTML = msg;
+    }
+
+    function spinner(text) {
+      return `<span class="spinner"></span>${text}`;
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function searchPitcher(name) {
+      const encoded = encodeURIComponent(name.trim());
+      const data = await fetchJSON(`${MLB}/people/search?names=${encoded}&sportIds=1`);
+      const people = data.people || [];
+      if (!people.length) throw new Error(`Pitcher not found: ${name}`);
+      // Prefer active pitchers
+      return people[0].id;
+    }
+
+    async function fetchPitcherStats(playerId, season) {
+      const data = await fetchJSON(
+        `${MLB}/people/${playerId}/stats?stats=season&group=pitching&season=${season}&gameType=R`
+      );
+      const splits = (data.stats || []).flatMap(s => s.splits || []);
+      if (!splits.length) return null;
+      const stat = splits[0].stat;
+      const ip = parseFloat(stat.inningsPitched || 0);
+      const hr = parseInt(stat.homeRuns || 0, 10);
+      const era = parseFloat(stat.era || 0);
+      if (!ip || !era) return null;
+      return {
+        era,
+        hr9: ip > 0 ? (hr / ip) * 9 : LG_HR9,
+        ip: stat.inningsPitched,
+        gs: stat.gamesStarted,
+        name: splits[0].player ? splits[0].player.fullName : ''
+      };
+    }
+
+    async function fetchTeamStats(teamId, season) {
+      const data = await fetchJSON(
+        `${MLB}/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R`
+      );
+      const splits = (data.stats || []).flatMap(s => s.splits || []);
+      if (!splits.length) return null;
+      const stat = splits[0].stat;
+      const gp = parseInt(stat.gamesPlayed || 1, 10);
+      const runs = parseInt(stat.runs || 0, 10);
+      const hr = parseInt(stat.homeRuns || 0, 10);
+      if (!gp || !runs) return null;
+      return {
+        runsPerGame: runs / gp,
+        hrPerGame:   hr   / gp,
+        avg: stat.avg || '.000',
+        gp, runs, hr
+      };
+    }
+
+    function predict(teamStats, opponentPitcher, park) {
+      const eraFactor = opponentPitcher.era / LG_ERA;
+      const hr9Factor = opponentPitcher.hr9  / LG_HR9;
+      return {
+        runs: teamStats.runsPerGame * eraFactor * (park.runFactor / 100),
+        hr:   teamStats.hrPerGame   * hr9Factor  * (park.hrFactor  / 100)
+      };
+    }
+
+    async function calculate() {
+      const btn = document.getElementById('calc-btn');
+      btn.disabled = true;
+
+      const season   = document.getElementById('season').value;
+      const parkKey  = document.getElementById('park').value;
+      const park     = PARKS[parkKey];
+      const nyyName  = document.getElementById('pitcher-nyw').value.trim() || 'Max Fried';
+      const sfName   = document.getElementById('pitcher-sf').value.trim()  || 'Logan Webb';
+
+      setStatus(spinner('Fetching data from MLB Stats API...'));
+
+      const warnings = [];
+
+      // --- NYY team stats ---
+      let nyyStats;
+      try {
+        nyyStats = await fetchTeamStats(147, season);
+        if (!nyyStats) throw new Error('empty');
+      } catch {
+        warnings.push(`Yankees team stats (${season}) unavailable — using 2024 fallback`);
+        nyyStats = FALLBACK.teams[147];
+      }
+
+      // --- SF team stats ---
+      let sfStats;
+      try {
+        sfStats = await fetchTeamStats(137, season);
+        if (!sfStats) throw new Error('empty');
+      } catch {
+        warnings.push(`Giants team stats (${season}) unavailable — using 2024 fallback`);
+        sfStats = FALLBACK.teams[137];
+      }
+
+      // --- NYY starting pitcher ---
+      let nyyPitcher;
+      try {
+        const pid = await searchPitcher(nyyName);
+        nyyPitcher = await fetchPitcherStats(pid, season);
+        if (!nyyPitcher) throw new Error('no stats');
+        nyyPitcher.name = nyyName;
+      } catch {
+        const fb = FALLBACK.pitchers[nyyName] || FALLBACK.pitchers['Max Fried'];
+        warnings.push(`${nyyName} pitching stats unavailable — using fallback`);
+        nyyPitcher = { ...fb, name: nyyName };
+      }
+
+      // --- SF starting pitcher ---
+      let sfPitcher;
+      try {
+        const pid = await searchPitcher(sfName);
+        sfPitcher = await fetchPitcherStats(pid, season);
+        if (!sfPitcher) throw new Error('no stats');
+        sfPitcher.name = sfName;
+      } catch {
+        const fb = FALLBACK.pitchers[sfName] || FALLBACK.pitchers['Logan Webb'];
+        warnings.push(`${sfName} pitching stats unavailable — using fallback`);
+        sfPitcher = { ...fb, name: sfName };
+      }
+
+      // --- Predictions ---
+      // NYY bats against SF pitcher; SF bats against NYY pitcher
+      const nyyPred = predict(nyyStats, sfPitcher,  park);
+      const sfPred  = predict(sfStats,  nyyPitcher, park);
+
+      lastData = { nyyStats, sfStats, nyyPitcher, sfPitcher, park, season, nyyPred, sfPred };
+
+      renderResults(nyyPred, sfPred);
+      renderBreakdown(lastData);
+
+      if (warnings.length) {
+        setStatus('&#9888; ' + warnings.join(' &bull; '), 'warn');
+      } else {
+        setStatus('&#10003; Live data loaded for ' + season + ' season', 'ok');
+      }
+
+      btn.disabled = false;
+    }
+
+    function renderResults({ runs: nyyR, hr: nyyHR }, { runs: sfR, hr: sfHR }) {
+      const maxR  = Math.max(nyyR, sfR, 1);
+      const maxHR = Math.max(nyyHR, sfHR, 0.5);
+
+      document.getElementById('results-body').innerHTML = `
+        <div class="results-grid">
+          <div class="result-section">
+            <h3>Predicted Runs</h3>
+            <div class="team-result">
+              <div class="team-label">
+                <span class="team-name">Yankees</span>
+                <span class="team-value">${nyyR.toFixed(1)}</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill" style="width:${(nyyR/maxR*100).toFixed(1)}%"></div></div>
+            </div>
+            <div class="team-result">
+              <div class="team-label">
+                <span class="team-name">Giants</span>
+                <span class="team-value">${sfR.toFixed(1)}</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill alt" style="width:${(sfR/maxR*100).toFixed(1)}%"></div></div>
+            </div>
+          </div>
+          <div class="result-section">
+            <h3>Predicted Home Runs</h3>
+            <div class="team-result">
+              <div class="team-label">
+                <span class="team-name">Yankees</span>
+                <span class="team-value">${nyyHR.toFixed(1)}</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill" style="width:${(nyyHR/maxHR*100).toFixed(1)}%"></div></div>
+            </div>
+            <div class="team-result">
+              <div class="team-label">
+                <span class="team-name">Giants</span>
+                <span class="team-value">${sfHR.toFixed(1)}</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill alt" style="width:${(sfHR/maxHR*100).toFixed(1)}%"></div></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('breakdown-card').style.display = '';
+    }
+
+    function renderBreakdown({ nyyStats, sfStats, nyyPitcher, sfPitcher, park, season }) {
+      document.getElementById('breakdown').innerHTML = `
+        <table class="breakdown-table">
+          <tr><th colspan="3">Team Batting (${season})</th></tr>
+          <tr><td>Yankees</td><td>AVG ${nyyStats.avg} &bull; ${nyyStats.runsPerGame.toFixed(2)} R/G</td><td>${nyyStats.hrPerGame.toFixed(2)} HR/G</td></tr>
+          <tr><td>Giants</td><td>AVG ${sfStats.avg} &bull; ${sfStats.runsPerGame.toFixed(2)} R/G</td><td>${sfStats.hrPerGame.toFixed(2)} HR/G</td></tr>
+          <tr><th colspan="3" style="padding-top:0.6rem">Starting Pitchers (${season})</th></tr>
+          <tr><td>${nyyPitcher.name} (NYY)</td><td>ERA ${nyyPitcher.era.toFixed(2)} &bull; ${nyyPitcher.ip} IP</td><td>${nyyPitcher.hr9.toFixed(2)} HR/9</td></tr>
+          <tr><td>${sfPitcher.name} (SF)</td><td>ERA ${sfPitcher.era.toFixed(2)} &bull; ${sfPitcher.ip} IP</td><td>${sfPitcher.hr9.toFixed(2)} HR/9</td></tr>
+          <tr><th colspan="3" style="padding-top:0.6rem">Park Factors &mdash; ${park.name}</th></tr>
+          <tr><td>Run Factor</td><td colspan="2">${park.runFactor} (100 = neutral)</td></tr>
+          <tr><td>HR Factor</td><td colspan="2">${park.hrFactor} (100 = neutral)</td></tr>
+          <tr><th colspan="3" style="padding-top:0.6rem">League Averages Used</th></tr>
+          <tr><td>ERA baseline</td><td colspan="2">${LG_ERA}</td></tr>
+          <tr><td>HR/9 baseline</td><td colspan="2">${LG_HR9}</td></tr>
+        </table>
+      `;
+    }
+
+    function toggleBreakdown() {
+      const el = document.getElementById('breakdown');
+      const btn = document.querySelector('.breakdown-toggle');
+      el.classList.toggle('open');
+      btn.textContent = el.classList.contains('open') ? 'Hide details' : 'Show details';
+    }
+
+    // Auto-run on load
+    window.addEventListener('DOMContentLoaded', calculate);
+  </script>
+</body>
+</html>
