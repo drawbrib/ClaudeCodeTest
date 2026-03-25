@@ -8,7 +8,7 @@ GitHub: https://github.com/drawbrib/ClaudeCodeTest
 
 ## Git Workflow
 
-After every meaningful change, commit with a clean message and push:
+**Commit and push after every meaningful unit of work** — features, fixes, and significant edits all get their own commit so work is never lost and the history is always revertable.
 
 ```bash
 git add <files>
@@ -18,7 +18,11 @@ Optional body explaining what and why."
 git push
 ```
 
-Use imperative subject lines ("Add", "Fix", "Update"). Each logical change gets its own commit — don't batch unrelated work.
+Rules:
+- Use imperative subject lines ("Add", "Fix", "Update")
+- Each logical change gets its own commit — don't batch unrelated work
+- Push immediately after committing — do not leave commits unpushed
+- Never leave the repo in a broken or half-finished state at the end of a session
 
 ## Stack
 
